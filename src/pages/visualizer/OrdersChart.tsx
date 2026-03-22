@@ -193,11 +193,11 @@ export function OrdersChart({ symbol }: OrdersChartProps): ReactNode {
       value={priceMode}
       onChange={value => setPriceMode(value as 'mid' | 'bidask')}
       data={[
-        { label: 'Mid price', value: 'mid' },
+        { label: 'Mid Price', value: 'mid' },
         { label: 'Bid/Ask', value: 'bidask' },
       ]}
     />
   );
 
-  return <Chart title={`${symbol} - Orders`} series={series} controls={controls} />;
+  return <Chart title={`${symbol} - Order Book`} series={series} controls={controls} />;
 }

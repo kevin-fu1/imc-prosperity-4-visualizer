@@ -38,7 +38,7 @@ export function CandlestickChart({ symbol }: CandlestickChartProps): ReactNode {
   let title = '';
 
   if (viewMode === 'movement') {
-    title = `${symbol} - Movement`;
+    title = `${symbol} - Price Movement`;
     const candleData: [number, number, number, number, number][] = [];
 
     for (let i = 0; i < rows.length; i += size) {
