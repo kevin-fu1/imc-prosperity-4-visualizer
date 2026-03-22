@@ -10,12 +10,10 @@ import { EnvironmentChart } from './EnvironmentChart.tsx';
 import { OrdersChart } from './OrdersChart.tsx';
 import { PlainValueObservationChart } from './PlainValueObservationChart.tsx';
 import { PositionChart } from './PositionChart.tsx';
-import { ProductPriceChart } from './ProductPriceChart.tsx';
 import { ProfitLossChart } from './ProfitLossChart.tsx';
 import { TimestampsCard } from './TimestampsCard.tsx';
 import { TransportChart } from './TransportChart.tsx';
 import { VisualizerCard } from './VisualizerCard.tsx';
-import { VolumeChart } from './VolumeChart.tsx';
 
 export function VisualizerPage(): ReactNode {
   const algorithm = useStore(state => state.algorithm);
@@ -60,20 +58,8 @@ export function VisualizerPage(): ReactNode {
   const symbolColumns: ReactNode[] = [];
   sortedSymbols.forEach(symbol => {
     symbolColumns.push(
-      <Grid.Col key={`${symbol} - product price`} span={{ xs: 12, sm: 6 }}>
-        <ProductPriceChart symbol={symbol} />
-      </Grid.Col>,
-    );
-
-    symbolColumns.push(
       <Grid.Col key={`${symbol} - candlestick`} span={{ xs: 12, sm: 6 }}>
         <CandlestickChart symbol={symbol} />
-      </Grid.Col>,
-    );
-
-    symbolColumns.push(
-      <Grid.Col key={`${symbol} - symbol`} span={{ xs: 12, sm: 6 }}>
-        <VolumeChart symbol={symbol} />
       </Grid.Col>,
     );
 
