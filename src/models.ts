@@ -18,6 +18,7 @@ export interface ResultLogTradeHistoryItem {
   currency: string;
   price: number;
   quantity: number;
+  symbol: string
 }
 
 export interface UserSummary {
@@ -123,6 +124,7 @@ export interface Algorithm {
   summary?: AlgorithmSummary;
   activityLogs: ActivityLogRow[];
   data: AlgorithmDataRow[];
+  tradeHistory: ResultLogTradeHistoryItem[];
 }
 
 export type CompressedListing = [symbol: ProsperitySymbol, product: Product, denomination: Product];

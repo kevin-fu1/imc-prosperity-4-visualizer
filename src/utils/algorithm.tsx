@@ -275,6 +275,7 @@ export function parseAlgorithmLogs(resultLog: ResultLog, summary?: AlgorithmSumm
     summary,
     activityLogs,
     data,
+    tradeHistory: resultLog.tradeHistory ?? [],
   };
 }
 

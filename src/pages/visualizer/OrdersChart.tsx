@@ -1,5 +1,5 @@
-import Highcharts from 'highcharts';
 import { SegmentedControl } from '@mantine/core';
+import Highcharts from 'highcharts';
 import { ReactNode, useState } from 'react';
 import { ProsperitySymbol } from '../../models.ts';
 import { useStore } from '../../store.ts';
@@ -36,27 +36,33 @@ export function OrdersChart({ symbol }: OrdersChartProps): ReactNode {
   }
 
   const filledBuyData: Highcharts.PointOptionsObject[] = [];
-  const unfilledBuyData: Highcharts.PointOptionsObject[] = [];
   const filledSellData: Highcharts.PointOptionsObject[] = [];
+  const otherTradeData: Highcharts.PointOptionsObject[] = [];
+
+  for (const trade of algorithm.tradeHistory) {
+    if (trade.symbol !== symbol) continue;
+
+    const point: Highcharts.PointOptionsObject = {
+      x: trade.timestamp,
+      y: trade.price,
+      custom: { quantity: trade.quantity, buyer: trade.buyer, seller: trade.seller },
+    };
+
+    if (trade.buyer.includes('SUBMISSION')) {
+      filledBuyData.push(point);
+    } else if (trade.seller.includes('SUBMISSION')) {
+      filledSellData.push(point);
+    } else {
+      otherTradeData.push(point);
+    }
+  }
+
+  const unfilledBuyData: Highcharts.PointOptionsObject[] = [];
   const unfilledSellData: Highcharts.PointOptionsObject[] = [];
 
-  // Orders placed at timestamp T appear in ownTrades at timestamp T+100 (next row),
-  // with trade.timestamp == T. Check fills per-row using the immediately next row's
-  // ownTrades to avoid cross-day timestamp collisions in multi-day rounds.
-  for (let i = 0; i < algorithm.data.length; i++) {
-    const row = algorithm.data[i];
+  for (const row of algorithm.data) {
     const orders = row.orders[symbol];
     if (!orders) continue;
-
-    const nextOwnTrades = algorithm.data[i + 1]?.state.ownTrades[symbol] ?? [];
-    const filledBuyPrices = new Set<number>();
-    const filledSellPrices = new Set<number>();
-
-    for (const trade of nextOwnTrades) {
-      if (trade.timestamp !== row.state.timestamp) continue;
-      if (trade.buyer === 'SUBMISSION') filledBuyPrices.add(trade.price);
-      if (trade.seller === 'SUBMISSION') filledSellPrices.add(trade.price);
-    }
 
     for (const order of orders) {
       const point: Highcharts.PointOptionsObject = {
@@ -66,24 +72,45 @@ export function OrdersChart({ symbol }: OrdersChartProps): ReactNode {
       };
 
       if (order.quantity > 0) {
-        (filledBuyPrices.has(order.price) ? filledBuyData : unfilledBuyData).push(point);
+        unfilledBuyData.push(point);
       } else if (order.quantity < 0) {
-        (filledSellPrices.has(order.price) ? filledSellData : unfilledSellData).push(point);
+        unfilledSellData.push(point);
       }
     }
   }
 
-  const buyTooltip: Highcharts.SeriesTooltipOptionsObject = {
+  const filledBuyTooltip: Highcharts.SeriesTooltipOptionsObject = {
     pointFormatter(this: Highcharts.Point) {
-      const qty = (this as any).custom?.quantity;
-      return `<span style="color:${this.color}">▲</span> Buy: <b>${this.y}</b> (qty: ${qty})<br/>`;
+      const { quantity, buyer, seller } = (this as any).custom ?? {};
+      return `<span style="color:${this.color}">▲</span> Buy (filled): <b>${this.y}</b> (qty: ${quantity}, buyer: ${buyer}, seller: ${seller})<br/>`;
     },
   };
 
-  const sellTooltip: Highcharts.SeriesTooltipOptionsObject = {
+  const filledSellTooltip: Highcharts.SeriesTooltipOptionsObject = {
+    pointFormatter(this: Highcharts.Point) {
+      const { quantity, buyer, seller } = (this as any).custom ?? {};
+      return `<span style="color:${this.color}">▼</span> Sell (filled): <b>${this.y}</b> (qty: ${quantity}, buyer: ${buyer}, seller: ${seller})<br/>`;
+    },
+  };
+
+  const unfilledBuyTooltip: Highcharts.SeriesTooltipOptionsObject = {
     pointFormatter(this: Highcharts.Point) {
       const qty = (this as any).custom?.quantity;
-      return `<span style="color:${this.color}">▼</span> Sell: <b>${this.y}</b> (qty: ${qty})<br/>`;
+      return `<span style="color:${this.color}">▲</span> Buy (order): <b>${this.y}</b> (qty: ${qty})<br/>`;
+    },
+  };
+
+  const unfilledSellTooltip: Highcharts.SeriesTooltipOptionsObject = {
+    pointFormatter(this: Highcharts.Point) {
+      const qty = (this as any).custom?.quantity;
+      return `<span style="color:${this.color}">▼</span> Sell (order): <b>${this.y}</b> (qty: ${qty})<br/>`;
+    },
+  };
+
+  const otherTradeTooltip: Highcharts.SeriesTooltipOptionsObject = {
+    pointFormatter(this: Highcharts.Point) {
+      const { quantity, buyer, seller } = (this as any).custom ?? {};
+      return `<span style="color:${this.color}">◆</span> Trade: <b>${this.y}</b> (qty: ${quantity}, buyer: ${buyer}, seller: ${seller})<br/>`;
     },
   };
 
@@ -159,15 +186,18 @@ export function OrdersChart({ symbol }: OrdersChartProps): ReactNode {
       color: getBidColor(1.0),
       data: filledBuyData,
       marker: { symbol: 'triangle', radius: 6 },
-      tooltip: buyTooltip,
+      tooltip: filledBuyTooltip,
+      dataGrouping: { enabled: false },
     },
     {
       type: 'scatter',
-      name: 'Buy (unfilled)',
+      name: 'Buy (order)',
       color: getBidColor(0.3),
       data: unfilledBuyData,
       marker: { symbol: 'triangle', radius: 4 },
-      tooltip: buyTooltip,
+      tooltip: unfilledBuyTooltip,
+      dataGrouping: { enabled: false },
+      visible: false,
     },
     {
       type: 'scatter',
@@ -175,15 +205,27 @@ export function OrdersChart({ symbol }: OrdersChartProps): ReactNode {
       color: getAskColor(1.0),
       data: filledSellData,
       marker: { symbol: 'triangle-down', radius: 6 },
-      tooltip: sellTooltip,
+      tooltip: filledSellTooltip,
+      dataGrouping: { enabled: false },
     },
     {
       type: 'scatter',
-      name: 'Sell (unfilled)',
+      name: 'Sell (order)',
       color: getAskColor(0.3),
       data: unfilledSellData,
       marker: { symbol: 'triangle-down', radius: 4 },
-      tooltip: sellTooltip,
+      tooltip: unfilledSellTooltip,
+      dataGrouping: { enabled: false },
+      visible: false,
+    },
+    {
+      type: 'scatter',
+      name: 'Other trades',
+      color: '#a855f7',
+      data: otherTradeData,
+      marker: { symbol: 'diamond', radius: 4 },
+      tooltip: otherTradeTooltip,
+      dataGrouping: { enabled: false },
     },
   ];
 

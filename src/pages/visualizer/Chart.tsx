@@ -92,6 +92,12 @@ export function Chart({ title, options, series, min, max, controls }: ChartProps
               return false;
             });
           },
+          fullscreenOpen() {
+            this.tooltip.update({ outside: false });
+          },
+          fullscreenClose() {
+            this.tooltip.update({ outside: true });
+          },
         },
       },
       title: {
