@@ -23,18 +23,20 @@ function formatTraderData(value: any): string {
 
 export interface TimestampDetailProps {
   row: AlgorithmDataRow;
-  selectedProduct?: string;
+  visibleProducts?: string[] | null;
 }
 
 export function TimestampDetail({
   row: { state, orders, conversions, traderData, algorithmLogs, sandboxLogs },
-  selectedProduct = 'all',
+  visibleProducts,
 }: TimestampDetailProps): ReactNode {
   const algorithm = useStore(state => state.algorithm)!;
 
+  const visibleProductSet = visibleProducts ? new Set(visibleProducts) : null;
+
   function filterByKey<T>(record: Record<string, T>): Record<string, T> {
-    if (selectedProduct === 'all') return record;
-    return Object.fromEntries(Object.entries(record).filter(([key]) => key === selectedProduct));
+    if (!visibleProductSet) return record;
+    return Object.fromEntries(Object.entries(record).filter(([key]) => visibleProductSet.has(key)));
   }
 
   const filteredListings = filterByKey(state.listings);
@@ -47,10 +49,7 @@ export function TimestampDetail({
   const filteredConversionObservations = filterByKey(state.observations.conversionObservations);
 
   const profitLoss = algorithm.activityLogs
-    .filter(
-      row =>
-        row.timestamp === state.timestamp && (selectedProduct === 'all' || row.product === selectedProduct),
-    )
+    .filter(row => row.timestamp === state.timestamp && (!visibleProductSet || visibleProductSet.has(row.product)))
     .reduce((acc, val) => acc + val.profitLoss, 0);
 
   return (
@@ -72,7 +71,7 @@ export function TimestampDetail({
       </Grid.Col>
       <Grid.Col span={{ xs: 12, sm: 4 }}>
         <Title order={5}>Profit / Loss</Title>
-        <ProfitLossTable timestamp={state.timestamp} product={selectedProduct === 'all' ? undefined : selectedProduct} />
+        <ProfitLossTable timestamp={state.timestamp} products={visibleProducts ?? undefined} />
       </Grid.Col>
       {Object.entries(filteredOrderDepths).map(([symbol, orderDepth], i) => (
         <Grid.Col key={i} span={{ xs: 12, sm: 4 }}>

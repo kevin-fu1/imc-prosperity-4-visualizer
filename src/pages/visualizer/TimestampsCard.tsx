@@ -4,6 +4,7 @@ import { KeyboardEvent, ReactNode, useEffect, useState } from 'react';
 import { AlgorithmDataRow } from '../../models.ts';
 import { useStore } from '../../store.ts';
 import { formatNumber } from '../../utils/format.ts';
+import { getProductGroup, getProductGroups } from '../../utils/product-groups.ts';
 import { TimestampDetail } from './TimestampDetail.tsx';
 import { VisualizerCard } from './VisualizerCard.tsx';
 
@@ -26,11 +27,26 @@ export function TimestampsCard(): ReactNode {
   const products = Array.from(
     new Set(algorithm.data.flatMap(row => Object.keys(row.state.orderDepths))),
   ).sort();
-  const productSelectData = [{ value: 'all', label: 'All Products' }, ...products.map(p => ({ value: p, label: p }))];
+  const productGroups = getProductGroups(products);
 
   const [timestamp, setTimestamp] = useState(timestampMin);
   const [inputValue, setInputValue] = useState<number | string>(timestampMin);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string>('all');
+
+  const effectiveGroup = selectedGroup ?? productGroups[0] ?? 'all';
+  const productsInGroup =
+    effectiveGroup === 'all' ? products : products.filter(p => getProductGroup(p, products) === effectiveGroup);
+  const productSelectData = [
+    { value: 'all', label: 'All Products' },
+    ...productsInGroup.map(p => ({ value: p, label: p })),
+  ];
+  const effectiveProduct =
+    selectedProduct !== 'all' && !productsInGroup.includes(selectedProduct) ? 'all' : selectedProduct;
+  const groupSelectData = [
+    { value: 'all', label: 'All Groups' },
+    ...productGroups.map(g => ({ value: g, label: g })),
+  ];
 
   useEffect(() => {
     setInputValue(timestamp);
@@ -88,7 +104,17 @@ export function TimestampsCard(): ReactNode {
           styles={{ input: { fontWeight: 700, fontSize: 'var(--mantine-font-size-sm)' } }}
         />
         <Select
-          value={selectedProduct}
+          value={effectiveGroup}
+          onChange={value => {
+            setSelectedGroup(value ?? 'all');
+            setSelectedProduct('all');
+          }}
+          data={groupSelectData}
+          style={{ width: 180 }}
+          styles={{ input: { fontWeight: 600, fontSize: 'var(--mantine-font-size-sm)' } }}
+        />
+        <Select
+          value={effectiveProduct}
           onChange={value => setSelectedProduct(value ?? 'all')}
           data={productSelectData}
           style={{ width: 180 }}
@@ -108,7 +134,16 @@ export function TimestampsCard(): ReactNode {
       />
 
       {rowsByTimestamp[timestamp] ? (
-        <TimestampDetail row={rowsByTimestamp[timestamp]} selectedProduct={selectedProduct} />
+        <TimestampDetail
+          row={rowsByTimestamp[timestamp]}
+          visibleProducts={
+            effectiveProduct !== 'all'
+              ? [effectiveProduct]
+              : effectiveGroup === 'all'
+                ? null
+                : productsInGroup
+          }
+        />
       ) : (
         <Text>No logs found for timestamp {formatNumber(timestamp)}</Text>
       )}
